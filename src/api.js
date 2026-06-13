@@ -11,7 +11,7 @@ import { enqueueCrawlJob } from './queue/queues.js'
 import { upsertCrawlJob } from './db/client.js'
 import { logger } from './utils/logger.js'
 
-const PORT   = process.env.CRAWLER_API_PORT || 3001
+const PORT   = process.env.PORT || process.env.CRAWLER_API_PORT || 3001
 const SECRET = process.env.ADMIN_API_SECRET || ''
 
 function json(res, status, body) {
