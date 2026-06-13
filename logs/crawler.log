@@ -1,0 +1,28 @@
+20:31:37 [[32minfo[39m] ProxyManager: loaded 2 proxies
+20:31:39 [[32minfo[39m] ProxyManager: loaded 2 proxies
+20:31:42 [[32minfo[39m] ProxyManager: loaded 2 proxies
+20:31:44 [[32minfo[39m] ProxyManager: loaded 2 proxies
+20:31:46 [[32minfo[39m] ProxyManager: loaded 2 proxies
+20:31:51 [[32minfo[39m] ProxyManager: loaded 2 proxies
+20:31:58 [[32minfo[39m] ProxyManager: loaded 2 proxies
+20:32:12 [[32minfo[39m] ProxyManager: loaded 2 proxies
+20:32:21 [[32minfo[39m] ProxyManager: loaded 2 proxies
+20:32:21 [[32minfo[39m] Browser launched
+20:32:21 [[32minfo[39m] Worker started — concurrency: 3
+20:48:48 [[32minfo[39m] Shutting down worker...
+20:48:48 [[32minfo[39m] Browser closed
+20:48:51 [[32minfo[39m] ProxyManager: loaded 2 proxies
+20:48:51 [[32minfo[39m] Browser launched
+20:48:51 [[32minfo[39m] Worker started — concurrency: 3
+05:27:55 [[32minfo[39m] DRY RUN — pass --run to actually enqueue jobs
+
+05:27:55 [[32minfo[39m] Would enqueue 5 crawl jobs:
+05:27:55 [[32minfo[39m]   1. Restaurants / New York, NY (3 pages)
+05:27:55 [[32minfo[39m]   2. Plumbers / Austin, TX (3 pages)
+05:27:55 [[32minfo[39m]   3. Hair Salons / Chicago, IL (3 pages)
+05:27:55 [[32minfo[39m]   4. Dentists / Phoenix, AZ (2 pages)
+05:27:55 [[32minfo[39m]   5. Auto Repair / Miami, FL (2 pages)
+05:27:55 [[32minfo[39m] 
+Estimated businesses per job: 10–25 per page
+05:27:55 [[32minfo[39m] Estimated total: 221 businesses
+05:27:55 [[32minfo[39m] At $0.01/site for AI generation: ~$2.21
