@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { Worker } from 'bullmq'
 import { YellowPagesScraper } from '../crawler/yellowpages.js'
 import { GooglePlacesScraper } from '../crawler/googleplaces.js'
+import { SerperScraper } from '../crawler/serper.js'
 import { ProxyManager } from '../utils/proxy.js'
 import { RateLimiter } from '../utils/rateLimiter.js'
 import { upsertBusinesses, updateCrawlJob } from '../db/client.js'
@@ -26,6 +27,15 @@ if (process.env.GOOGLE_PLACES_API_KEY) {
   logger.warn('GOOGLE_PLACES_API_KEY not set — Google Places source disabled')
 }
 
+// Serper: stateless HTTP client, instantiate lazily if key is present
+let serperScraper = null
+if (process.env.SERPER_API_KEY) {
+  serperScraper = new SerperScraper()
+  logger.info('Serper scraper ready')
+} else {
+  logger.warn('SERPER_API_KEY not set — Serper source disabled')
+}
+
 const worker = new Worker(
   'guma-crawl',
   async (job) => {
@@ -41,9 +51,10 @@ const worker = new Worker(
     await job.updateProgress(5)
 
     // ── Select scraper based on source ───────────────────────────────────────
-    const scraper = source === 'googleplaces'
-      ? gpScraper
-      : ypScraper
+    const scraper =
+      source === 'googleplaces' ? gpScraper :
+      source === 'serper'       ? serperScraper :
+      ypScraper
 
     if (!scraper) {
       const msg = `Scraper for source "${source}" is not available (missing API key?)`
