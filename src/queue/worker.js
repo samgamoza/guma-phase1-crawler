@@ -3,6 +3,8 @@ import { Worker } from 'bullmq'
 import { YellowPagesScraper } from '../crawler/yellowpages.js'
 import { GooglePlacesScraper } from '../crawler/googleplaces.js'
 import { SerperScraper } from '../crawler/serper.js'
+import { ApifyScraper } from '../crawler/apify.js'
+import { BrightDataScraper } from '../crawler/brightdata.js'
 import { ProxyManager } from '../utils/proxy.js'
 import { RateLimiter } from '../utils/rateLimiter.js'
 import { upsertBusinesses, updateCrawlJob } from '../db/client.js'
@@ -36,6 +38,24 @@ if (process.env.SERPER_API_KEY) {
   logger.warn('SERPER_API_KEY not set — Serper source disabled')
 }
 
+// Apify: cloud actor runner, instantiate lazily if token is present
+let apifyScraper = null
+if (process.env.APIFY_API_TOKEN) {
+  apifyScraper = new ApifyScraper()
+  logger.info('Apify scraper ready')
+} else {
+  logger.warn('APIFY_API_TOKEN not set — Apify source disabled')
+}
+
+// Bright Data: dataset API or proxy mode, instantiate lazily if token is present
+let brightDataScraper = null
+if (process.env.BRIGHT_DATA_API_TOKEN) {
+  brightDataScraper = new BrightDataScraper()
+  logger.info(`Bright Data scraper ready (mode: ${process.env.BRIGHT_DATA_MODE || 'dataset'})`)
+} else {
+  logger.warn('BRIGHT_DATA_API_TOKEN not set — Bright Data source disabled')
+}
+
 const worker = new Worker(
   'guma-crawl',
   async (job) => {
@@ -54,6 +74,8 @@ const worker = new Worker(
     const scraper =
       source === 'googleplaces' ? gpScraper :
       source === 'serper'       ? serperScraper :
+      source === 'apify'        ? apifyScraper :
+      source === 'brightdata'   ? brightDataScraper :
       ypScraper
 
     if (!scraper) {
