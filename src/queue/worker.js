@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { Worker } from 'bullmq'
 import { YellowPagesScraper } from '../crawler/yellowpages.js'
+import { GooglePlacesScraper } from '../crawler/googleplaces.js'
 import { ProxyManager } from '../utils/proxy.js'
 import { RateLimiter } from '../utils/rateLimiter.js'
 import { upsertBusinesses, updateCrawlJob } from '../db/client.js'
@@ -12,15 +13,24 @@ const CONCURRENCY = parseInt(process.env.CRAWL_CONCURRENCY || '2', 10)
 const proxyManager = ProxyManager.fromEnv()
 const rateLimiter = RateLimiter.fromEnv()
 
-// One shared browser across all worker tasks
-const scraper = new YellowPagesScraper({ proxyManager, rateLimiter })
-await scraper.init()
+// YellowPages: one shared browser across all worker tasks
+const ypScraper = new YellowPagesScraper({ proxyManager, rateLimiter })
+await ypScraper.init()
+
+// Google Places: stateless HTTP client, instantiate lazily if key is present
+let gpScraper = null
+if (process.env.GOOGLE_PLACES_API_KEY) {
+  gpScraper = new GooglePlacesScraper()
+  logger.info('Google Places scraper ready')
+} else {
+  logger.warn('GOOGLE_PLACES_API_KEY not set — Google Places source disabled')
+}
 
 const worker = new Worker(
   'guma-crawl',
   async (job) => {
-    const { category, city, state, maxPages = 5, jobId } = job.data
-    const label = `${category} / ${city}, ${state}`
+    const { category, city, state, maxPages = 5, jobId, source = 'yellowpages' } = job.data
+    const label = `[${source}] ${category} / ${city}, ${state}`
 
     logger.info(`Worker processing: ${label}`)
 
@@ -29,6 +39,18 @@ const worker = new Worker(
     }
 
     await job.updateProgress(5)
+
+    // ── Select scraper based on source ───────────────────────────────────────
+    const scraper = source === 'googleplaces'
+      ? gpScraper
+      : ypScraper
+
+    if (!scraper) {
+      const msg = `Scraper for source "${source}" is not available (missing API key?)`
+      logger.error(msg)
+      if (jobId) await updateCrawlJob(jobId, { status: 'failed', finished_at: new Date().toISOString(), error_log: { message: msg } })
+      throw new Error(msg)
+    }
 
     // ── Scrape ──────────────────────────────────────────────────────────────
     let businesses = []
@@ -50,17 +72,30 @@ const worker = new Worker(
 
     // ── Filter: only businesses without a website ────────────────────────────
     const noWebsite = businesses.filter((b) => !b.has_website)
+
+    // ── Quality gate: skip records missing critical fields ───────────────────
+    // Saves Claude API credits — low-quality records rarely convert anyway.
+    const qualified = noWebsite.filter((b) => {
+      const hasName    = Boolean(b.name?.trim())
+      const hasCity    = Boolean(b.city?.trim())
+      const hasContact = Boolean(b.phone?.trim() || b.email?.trim())
+      const hasAddress = Boolean(b.address?.trim())
+      const score      = [hasName, hasCity, hasContact, hasAddress].filter(Boolean).length
+      if (score < 2) logger.debug(`Skipping low-quality record: ${b.name || 'unnamed'} (score ${score}/4)`)
+      return score >= 2
+    })
+
     logger.info(
-      `${label}: ${businesses.length} total, ${noWebsite.length} without website`
+      `${label}: ${businesses.length} total, ${noWebsite.length} without website, ${qualified.length} qualified`
     )
 
     await job.updateProgress(75)
 
     // ── Save to DB ───────────────────────────────────────────────────────────
     let saved = []
-    if (noWebsite.length > 0) {
+    if (qualified.length > 0) {
       try {
-        saved = await upsertBusinesses(noWebsite)
+        saved = await upsertBusinesses(qualified)
         logger.info(`Saved ${saved.length} businesses to DB`)
       } catch (err) {
         logger.error('DB save failed', { error: err.message })
@@ -130,7 +165,7 @@ worker.on('error', (err) => {
 async function shutdown() {
   logger.info('Shutting down worker...')
   await worker.close()
-  await scraper.close()
+  await ypScraper.close()
   process.exit(0)
 }
 

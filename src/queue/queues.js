@@ -45,12 +45,12 @@ export const generateQueue = new Queue('guma-generate', {
 
 // ─── Queue helpers ────────────────────────────────────────────────────────
 
-export async function enqueueCrawlJob({ category, city, state, maxPages = 5, dbJobId }) {
-  const jobName = `crawl:${category}:${city}-${state}`
+export async function enqueueCrawlJob({ category, city, state, maxPages = 5, source = 'yellowpages', dbJobId }) {
+  const jobName = `crawl:${source}:${category}:${city}-${state}`
   const job = await crawlQueue.add(
     jobName,
-    { category, city, state, maxPages, jobId: dbJobId },
-    { jobId: `${category}-${city}-${state}-${Date.now()}` }
+    { category, city, state, maxPages, source, jobId: dbJobId },
+    { jobId: `${source}-${category}-${city}-${state}-${Date.now()}` }
   )
   logger.info(`Enqueued crawl job: ${jobName} (${job.id})`)
   return job

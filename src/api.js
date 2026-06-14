@@ -44,16 +44,22 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === '/jobs') {
     try {
       const body = await readBody(req)
-      const { category = 'Restaurants', city = 'Austin', state = 'TX', maxPages = 5 } = body
+      const {
+        category = 'Restaurants',
+        city     = 'Austin',
+        state    = 'TX',
+        maxPages = 5,
+        source   = 'yellowpages',  // 'yellowpages' | 'googleplaces'
+      } = body
 
       const dbJob = await upsertCrawlJob({
-        source: 'yellowpages',
+        source,
         category,
         region: `${city}, ${state}`,
         status: 'pending',
       })
 
-      const job = await enqueueCrawlJob({ category, city, state, maxPages, dbJobId: dbJob.id })
+      const job = await enqueueCrawlJob({ category, city, state, maxPages, source, dbJobId: dbJob.id })
 
       logger.info(`API triggered crawl: ${category} / ${city}, ${state}`)
       return json(res, 200, { ok: true, jobId: job.id, dbJobId: dbJob.id })
