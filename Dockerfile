@@ -26,4 +26,4 @@ RUN mkdir -p logs
 # Run the HTTP API in the foreground (so Railway sees the port) and the
 # BullMQ worker in the background. If the worker exits, the container stays
 # up via the API so /health and logs remain reachable for debugging.
-CMD ["sh", "-c", "node src/queue/worker.js & node src/api.js"]
+CMD ["sh", "-c", "node src/api.js & node src/queue/worker.js"]
